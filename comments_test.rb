@@ -1,72 +1,118 @@
 require 'nbayes'
 require 'byebug'
 
-# Criar um classificador
-nbayes = NBayes::Base.new
-# Treinar o classificador com exemplos - as palavras da String são divididas em um array
-nbayes.train( "Nice article that my father, who grew up in Beijing during the teens through 30's, would have enjoyed.".split(/\s+/), 'GOOD' )
-nbayes.train( "Wonderful article, perfectly true to Beijing which is a city I am ever so fond of.".split(/\s+/), 'GOOD' )
-nbayes.train( "Wonderful city and people".split(/\s+/), 'GOOD' )
-nbayes.train( "Thank you for bringing back memories of Ritan Park.".split(/\s+/), 'GOOD' )
-nbayes.train( "What a lovely article. I too love Beijing and especially The Temple of the Sun.".split(/\s+/), 'GOOD' )
-nbayes.train( "Thats a bad city".split(/\s+/), 'BAD' )
-nbayes.train( "i hate this city".split(/\s+/), 'BAD' )
-nbayes.train( "this city is a trash".split(/\s+/), 'BAD' )
-nbayes.train( "bad city with bad people but wonderful food".split(/\s+/), 'BAD' )
 
 def main
-  @nbayes = NBayes::Base.new
+  @nbayes     = NBayes::Base.new
 
+  #treinamento dos algoritimos baseados no data-set
   impo_train_negative
   impo_train_positive
 
+  #Teste de classificação dos algoritimos
 
-  tokens = "this movie is exeptional".split(/\s+/)
-
-  result = @nbayes.classify(tokens)
-
-
-  # Imprime a probabilidade da mensagem ser SPAM
-  p result['GOOD']
-  # Imprime a probabilidade da mensagem ser HAM
-  p result['BAD']
-
-
-  # Imprime a classe em que o texto foi classificado. (SPAM ou HAM)
-  p result.max_class
+  classify_positive
+  classify_negative
 end
 
+def format_string(string)
+  string.delete('<br>').delete('</br>').delete("\\").delete("\"")
+end
 
+def classify_positive
+    #importa todos os dados da classe
+  entries = Dir.entries('/mnt/c/aclImdb/test/pos') 
+  p 'rodando algoritimo comentarios positivos'
+  positive = 0
+  negative = 0
+  tot_input = 1000
+  tot_input.times do |index|
+    entry = entries[index]
+    next if ['.', '..'].include?(entry)
+    comment = get_file_data_test(entry, 'pos')
+    comment = format_string(comment)
+    result = @nbayes.classify(comment.split(/\s+/))
+    if result.max_class.eql?('GOOD')
+      positive += 1 
+    else
+      negative += 1 
+    end
+
+    # p result['BAD']
+    # p result['GOOD']
+  end
+
+  #calcula porcentagem de acerto
+  percent = positive.to_f/tot_input.to_f
+
+  p "Acertou #{positive} de 1000"
+  p "Confiabilidade do algoritimo #{percent * 100.0}%"
+end
+
+def classify_negative
+  #importa todos os dados da classe
+  entries_ng = Dir.entries('/mnt/c/aclImdb/test/neg') 
+  p 'rodando algoritimo comentarios negativos'
+  positive = 0
+  negative = 0
+  tot_input = 1000
+
+  tot_input.times do |index|
+    entry = entries_ng[index]
+    next if ['.', '..'].include?(entry)
+    comment = get_file_data_test(entry, 'neg')
+    comment = format_string(comment)
+    result = @nbayes.classify(comment.split(/\s+/))
+    if result.max_class.eql?('GOOD')
+      positive += 1 
+    else
+      negative += 1 
+    end
+
+    # p result['BAD']
+    # p result['GOOD']
+  end
+  p "Acertou #{negative} de 1000"
+  percent = negative.to_f/tot_input.to_f
+  p tot_input
+  p negative
+  percent = percent * 100.0
+  p "Confiabilidade do algoritimo #{percent}%"
+end
+
+def get_file_data_test(file_name, type)
+  file = File.open("/mnt/c/aclImdb/test/#{type}/#{file_name}", "r")
+  data = file.read
+  file.close
+  return data
+end
 
 def impo_train_positive
   entries = Dir.entries('/mnt/c/aclImdb/train/pos') 
   
-  100.times do |index|
+  1000.times do |index|
     entry = entries[index]
     next if ['.', '..'].include?(entry)
     comment = get_file_data(entry, 'pos')
+    comment = format_string(comment)
     train_positive(comment)
   end
 end
 
 def train_positive(comment)
-  #nbayes = NBayes::Base.new
   @nbayes.train(comment.split(/\s+/), 'GOOD')
 end
 
 def impo_train_negative
   entries = Dir.entries('/mnt/c/aclImdb/train/neg') 
   
-  100.times do |index|
+  1000.times do |index|
     entry = entries[index]
     next if ['.', '..'].include?(entry)
     comment = get_file_data(entry, 'neg')
+    comment = format_string(comment)
     train_negative(comment)
   end
-  # entries.each do |entry|
-  #   next if ['.', '..'].include?(entry)
-  #   puts get_file_data(entry)
-  # end
 
 end
 
@@ -78,19 +124,7 @@ def get_file_data(file_name, type)
 end
 
 def train_negative(comment)
-  #nbayes = NBayes::Base.new
   @nbayes.train(comment.split(/\s+/), 'BAD')
 end
 
 main
-
-# Dividir mensagem que precisa ser classificada
-#tokens = "Now is the time to buy Viagra cheaply and discreetly".split(/\s+/)
-# tokens = "Good city".split(/\s+/)
-# result = nbayes.classify(tokens)
-# # Imprime a classe em que o texto foi classificado. (SPAM ou HAM)
-# p result.max_class
-# # Imprime a probabilidade da mensagem ser SPAM
-# p result['SPAM']
-# # Imprime a probabilidade da mensagem ser HAM
-# p result['HAM']
